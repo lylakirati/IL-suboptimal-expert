@@ -39,7 +39,6 @@ class nn_bc_classifier:
         self.model = model
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr = args.lr)
         self.criterion = nn.CrossEntropyLoss()
-        self.f1_computer = evaluate.load_
 
     
     def train(self, trainloader, valloader, testloader):
