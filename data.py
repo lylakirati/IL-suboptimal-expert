@@ -14,13 +14,13 @@ ds = OfflineDataset(
     verbose = 1              # 0 = silent, >0 for reporting
 )
 
-def get_expert_traj():
-    obs, actions, rewards, dones, next_obs = ds.batch(batch_size=100000, split='train')
+def fetch_expert_traj(size):
+    obs, actions, rewards, dones, next_obs = ds.batch(batch_size=int(size), split='train')
 
     Expert_Flattened_States = obs[:, 0, :, :].reshape(-1, 84 * 84)
     Expert_actions = actions
 
     return Expert_Flattened_States, Expert_actions
 
-states, actions = get_expert_traj()
-print(states.shape)
+# states, actions = get_expert_traj()
+# print(states.shape)

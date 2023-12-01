@@ -1,19 +1,23 @@
 import torch 
-from torch.nn import nn
+import torch.nn as nn
 from tqdm import tqdm 
 from torch.utils.data import Dataset, DataLoader
-import evaluate 
-
+# import evaluate 
+from sklearn.metrics import f1_score, accuracy_score
+import numpy as np
 
 class nn_agent(nn.Module):
     def __init__(self, n_layer, state_size, action_size):
+        super().__init__()
         self.state_size =  state_size
         self.action_size = action_size
         self.n_layer = n_layer
-        self.layers = nn.sequential()
+        layers = nn.Sequential(nn.Linear(self.state_size, self.state_size), nn.ReLU())
         for _ in range(self.n_layer):
-            self.layers.append(nn.Linear(self.state_size, self.state_size))
-            self.layers.append(nn.ReLU())
+            layers.append(nn.Linear(self.state_size, self.state_size))
+            layers.append(nn.ReLU())
+        layers.append(nn.Linear(self.state_size, self.action_size))
+        self.layers = layers
         
     
     def forward(self, data):
@@ -48,8 +52,8 @@ class nn_bc_classifier:
             tbar = tqdm(trainloader, dynamic_ncols=True)
             for batch in tbar:
                 self.optimizer.zero_grad()
-                logits = self.model(batch["states"])
-                loss = self.criterion(logits, batch["actions"])
+                logits = self.model(torch.tensor(batch["states"], dtype = torch.float))
+                loss = self.criterion(logits, torch.tensor(batch["actions"], dtype = torch.long))
                 loss.backward()
                 self.optimizer.step()
             val_metrics = self._eval(valloader)
@@ -63,24 +67,30 @@ class nn_bc_classifier:
         
     def _eval(self, dataloader):
         preds = []
+        actions = []
         self.model.eval()
         tbar = tqdm(dataloader, dynamic_ncols=True)
         with torch.no_grad():
             for batch in tbar:
-                logits = self.model(batch["states"])
-                pred = self.argmax(logits, dim = -1)
+                logits = self.model(torch.tensor(batch["states"], dtype = torch.float))
+                pred = torch.argmax(logits, dim = -1)
                 preds.extend(pred.tolist())
-        f1 = evaluate.load('f1').compute(reference = dataloader["labels"], predictions=preds)
-        accuracy = evaluate.load('accuract').compute(reference = dataloader["labels"], predictions=preds)
+                # print(pred.tolist())
+                # print(batch["actions"].tolist())
+                actions.extend(batch["actions"].tolist())
+        # print(actions)
+        # print(preds)
+        f1 = f1_score(y_true= actions, y_pred=preds, average = "macro")
+        accuracy = accuracy_score(y_true= actions, y_pred=preds)
         return {
             "f1": f1,
             "accuracy": accuracy
         }
      
     def experiment(self, trainloader, valloader, testloader):
-        val_metrics_log, test_metrics_log = self.train(self, trainloader, valloader, testloader)
-        best_f1_index = torch.argmax(val_metrics_log["f1"]).item()
-        best_acc_index = torch.argmax(val_metrics_log["accuracy"]).item()
+        val_metrics_log, test_metrics_log = self.train(trainloader, valloader, testloader)
+        best_f1_index = np.argmax(val_metrics_log["f1"]).item()
+        best_acc_index = np.argmax(val_metrics_log["accuracy"]).item()
         test_f1 = test_metrics_log["f1"][best_f1_index]
         test_acc = test_metrics_log["accuracy"][best_acc_index]
         return {
@@ -102,8 +112,8 @@ class sklearn_classifier:
     def experiment(self, traindata, testdata):
         self.train(traindata)
         preds = self.model.predict(testdata["states"])
-        f1 = evaluate.load('f1').compute(reference = testdata["labels"], predictions=preds)
-        accuracy = evaluate.load('accuract').compute(reference = testdata["labels"], predictions=preds)
+        f1 = f1_score(y_true = testdata["labels"], y_pred=preds)
+        accuracy = accuracy_score(y_true= testdata["labels"], y_pred=preds)
         return {
             "f1": f1,
             "accuracy": accuracy
@@ -123,7 +133,7 @@ def run_experiment_sklearn(model, traindata, testdata):
 
 def run_experiment_nn(args, traindata = None, valdata = None, testdata = None):
     ## load model
-    model = nn_agent(n_layer = args.n_layer, state_size = args.tate_size , action_size = args.action_size )
+    model = nn_agent(n_layer = args.n_layer, state_size = args.state_size , action_size = args.action_size )
 
     ## load classifier
     classifier = nn_bc_classifier(model, args)
