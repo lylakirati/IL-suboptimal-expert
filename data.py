@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import torch
 
 from eorl import OfflineDataset
 
@@ -14,13 +15,38 @@ ds = OfflineDataset(
     verbose = 1              # 0 = silent, >0 for reporting
 )
 
-def fetch_expert_traj(size):
+def fetch_expert_traj_regular(size):
     obs, actions, rewards, dones, next_obs = ds.batch(batch_size=int(size), split='train')
 
     Expert_Flattened_States = obs[:, 0, :, :].reshape(-1, 84 * 84)
     Expert_actions = actions
 
     return Expert_Flattened_States, Expert_actions
+
+def fetch_expert_traj_cnn(size):
+    obs, actions, rewards, dones, next_obs = ds.batch(batch_size=int(size), split='train')
+
+    Expert_Flattened_States = obs
+    Expert_actions = actions
+
+    return Expert_Flattened_States, Expert_actions
+
+def fetch_expert_traj(size, args):
+    if args.test == "true":
+        return get_test_dataset(size)
+    elif args.platform == "sklearn":
+        return fetch_expert_traj_regular(size)
+    elif args.platform == "nn":
+        if args.nn_type == "ffn":
+            return fetch_expert_traj_regular(size)
+        elif args.nn_type == "cnn":
+            return fetch_expert_traj_cnn(size)
+
+def get_test_dataset(size):
+    X = torch.rand(size, 6)
+    y = torch.sum(X, dim = -1).type(torch.long)
+    return X, y
+
 
 # states, actions = get_expert_traj()
 # print(states.shape)
