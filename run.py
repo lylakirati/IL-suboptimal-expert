@@ -19,6 +19,7 @@ parser.add_argument("--test_size", type=float, default=0.2)
 parser.add_argument("--n_epochs", type=int, default=10)
 parser.add_argument("--nn_type", type=str, default="ffn")
 parser.add_argument("--test", type=str, default="false")
+parser.add_argument("--alt", type=str, default="false")
 
 args = parser.parse_args()
 

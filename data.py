@@ -1,12 +1,13 @@
 import numpy as np
 import pickle
 import torch
+from ncps.datasets.torch import AtariCloningDataset
 
 from eorl import OfflineDataset
 
 ds = OfflineDataset(
     env = 'Pong',            # pass name in `supported environments` below
-    dataset_size = 40000,   # [0, 1e6) frames of atari
+    dataset_size = 200000,   # [0, 1e6) frames of atari
     train_split = 0.9,       # 90% training, 10% held out for testing
     obs_only = False,        # only get observations (no actions, rewards, dones)
     framestack = 1,          # number of frames per sample
@@ -50,3 +51,31 @@ def get_test_dataset(size):
 
 # states, actions = get_expert_traj()
 # print(states.shape)
+
+# def get_data_alt():
+#     train_ds = AtariCloningDataset("breakout", split="train")
+#     val_ds = AtariCloningDataset("breakout", split="val")
+#     test_ds = AtariCloningDataset("breakout", split="val")
+    
+#     train = {"states" :  torch.Tensor(size = (0, 4, 84, 84)), "actions": torch.Tensor(size = (0,))}
+#     val = {"states" :  torch.Tensor(size = (0, 4, 84, 84)), "actions": torch.Tensor(size = (0,))}
+#     test = {"states" :  torch.Tensor(size = (0, 4, 84, 84)), "actions": torch.Tensor(size = (0,))}
+
+#     for i, d in enumerate(train_ds):
+#         train["states"] = torch.cat((train["states"], d[0]), dim = 0)
+#         train["actions"] = torch.cat((train["actions"], d[1]), dim = 0)
+#         print("\rfinished {} %".format(i/len(train_ds) * 100), end = "")
+#     for i, d in enumerate(val_ds):
+#         val["states"] = torch.cat((val["states"], d[0]), dim = 0)
+#         val["actions"] = torch.cat((val["actions"], d[1]), dim = 0)
+#         print("\rfinished {} %".format(i/len(val_ds) * 100), end = "")
+#     for i, d in enumerate(test_ds):
+#         test["states"] = torch.cat((test["states"], d[0]), dim = 0)
+#         test["actions"] = torch.cat((test["actions"], d[1]), dim = 0)
+#         print("\rfinished {} %".format(i/len(test_ds) * 100), end = "")
+#     return train, val, test
+
+
+
+    
+    

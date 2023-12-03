@@ -5,6 +5,7 @@ from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 # import evaluate 
 from sklearn.metrics import f1_score, accuracy_score
+from ncps.datasets.torch import AtariCloningDataset
 import numpy as np
 
 class nn_agent(nn.Module):
@@ -27,16 +28,20 @@ class nn_agent(nn.Module):
 class cnn_agent(nn.Module):
     def __init__(self, action_size):
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 6, 3)
+        self.conv1 = nn.Conv2d(4, 64, 3)
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 3)
-        self.fc1 = nn.Linear(5776, 120)
+        self.conv2 = nn.Conv2d(64, 128, 3)
+        # self.conv3 = nn.Conv2d(16, 16, 3)
+        # self.conv4 = nn.Conv2d(16, 16, 3)
+        self.fc1 = nn.Linear(46208, 120) # 144 5776 
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, action_size)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
+        # x = self.pool(F.relu(self.conv3(x)))
+        # x = self.pool(F.relu(self.conv3(x)))
         x = torch.flatten(x, 1) # flatten all dimensions except batch
         # print(x.shape)
         x = F.relu(self.fc1(x))
@@ -73,6 +78,7 @@ class nn_bc_classifier:
             tbar = tqdm(trainloader, dynamic_ncols=True)
             self.model.train()
             for batch in tbar:
+                batch = {"states": torch.squeeze(batch[0]), "actions" : torch.squeeze(batch[1])}
                 self.optimizer.zero_grad()
                 logits = self.model(torch.tensor(batch["states"], dtype = torch.float).to(self.args.device))
                 loss = self.criterion(logits, torch.tensor(batch["actions"], dtype = torch.long).to(self.args.device))
@@ -103,6 +109,7 @@ class nn_bc_classifier:
         tbar = tqdm(dataloader, dynamic_ncols=True)
         with torch.no_grad():
             for batch in tbar:
+                batch = {"states": torch.squeeze(batch[0]), "actions" : torch.squeeze(batch[1])}
                 logits = self.model(torch.tensor(batch["states"], dtype = torch.float).to(self.args.device))
                 pred = torch.argmax(logits, dim = -1)
                 preds.extend(pred.detach().cpu().tolist())
@@ -178,14 +185,25 @@ def run_experiment_nn(args, traindata = None, valdata = None, testdata = None):
     valdataset = nn_dataset(valdata)
     testdataset = nn_dataset(testdata)
 
-    ## create data loader
+    # ## create data loader
     trainloader = DataLoader(traindataset, batch_size = args.bs, shuffle = True)
     valloader = DataLoader(valdataset, batch_size = args.bs, shuffle = True)
     testloader = DataLoader(testdataset, batch_size = args.bs, shuffle = True)
+    if args.alt == "true": 
+        trainloader, valloader, testloader = get_data_alt()
 
     ## get results
     result = classifier.experiment(trainloader, valloader, testloader)
     return result
+
+def get_data_alt():
+    train_ds = AtariCloningDataset("breakout", split="train")
+    val_ds = AtariCloningDataset("breakout", split="val")
+    test_ds = AtariCloningDataset("breakout", split="val")
+    trainloader = DataLoader(train_ds, batch_size = 1, shuffle=True)
+    valloader = DataLoader(val_ds, batch_size = 1, shuffle=True)
+    testloader = DataLoader(test_ds, batch_size = 1, shuffle=True)
+    return trainloader, valloader, testloader
 
 
 
