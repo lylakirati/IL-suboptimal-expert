@@ -31,9 +31,9 @@ class cnn_agent(nn.Module):
         self.conv1 = nn.Conv2d(4, 64, 3)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(64, 128, 3)
-        # self.conv3 = nn.Conv2d(16, 16, 3)
+        # self.conv3 = nn.Conv2d(128, 16, 3)
         # self.conv4 = nn.Conv2d(16, 16, 3)
-        self.fc1 = nn.Linear(46208, 120) # 144 5776 
+        self.fc1 = nn.Linear(28224, 120) # 144 5776
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, action_size)
 
@@ -196,7 +196,8 @@ def run_experiment_nn(args, traindata = None, valdata = None, testdata = None):
     trainloader = DataLoader(traindataset, batch_size = args.bs, shuffle = True)
     valloader = DataLoader(valdataset, batch_size = args.bs, shuffle = True)
     testloader = DataLoader(testdataset, batch_size = args.bs, shuffle = True)
-    if args.alt == "true": 
+    if args.alt == "true":
+        print("not my data")
         trainloader, valloader, testloader = get_data_alt()
 
     ## get results
