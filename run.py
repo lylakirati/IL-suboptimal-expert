@@ -38,7 +38,7 @@ if __name__ == "__main__":
     if args.test == "true":
         args.state_size = 6
         
-    ## TODO: fetch data
+    ## fetch data
     if args.platform == "nn":
         states, actions = fetch_expert_traj(size = args.data_size, args = args)
     elif args.platform == "sklearn":

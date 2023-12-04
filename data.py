@@ -63,6 +63,7 @@ def get_data_alt2(size, args):
             states.append((cur_batch_states.numpy()[j]).flatten())
             actions.append(cur_batch_actions.numpy()[j])
     # print(np.array(actions))
+    # print(np.array(actions))
     return np.array(states), np.array(actions)
 #     val_ds = AtariCloningDataset("breakout", split="val")
 #     test_ds = AtariCloningDataset("breakout", split="val")

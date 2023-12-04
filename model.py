@@ -186,7 +186,6 @@ def run_experiment_nn(args, traindata = None, valdata = None, testdata = None):
 
     ## load classifier
     classifier = nn_bc_classifier(model, args)
-
     ## load dataset 
     traindataset = nn_dataset(traindata)
     valdataset = nn_dataset(valdata)
