@@ -1,0 +1,5 @@
+# Ignore all files and subdirectories under '__pycache__'
+__pycache__/*
+
+# Ignore all files and subdirectories under 'data_atari_seq'
+data_atari_seq/*

@@ -78,7 +78,7 @@ class nn_bc_classifier:
             tbar = tqdm(trainloader, dynamic_ncols=True)
             self.model.train()
             for batch in tbar:
-                batch = {"states": torch.squeeze(batch[0]), "actions" : torch.squeeze(batch[1])}
+                batch = self._process_batch(batch)
                 self.optimizer.zero_grad()
                 logits = self.model(torch.tensor(batch["states"], dtype = torch.float).to(self.args.device))
                 loss = self.criterion(logits, torch.tensor(batch["actions"], dtype = torch.long).to(self.args.device))
@@ -109,7 +109,7 @@ class nn_bc_classifier:
         tbar = tqdm(dataloader, dynamic_ncols=True)
         with torch.no_grad():
             for batch in tbar:
-                batch = {"states": torch.squeeze(batch[0]), "actions" : torch.squeeze(batch[1])}
+                batch = self._process_batch(batch)
                 logits = self.model(torch.tensor(batch["states"], dtype = torch.float).to(self.args.device))
                 pred = torch.argmax(logits, dim = -1)
                 preds.extend(pred.detach().cpu().tolist())
@@ -124,6 +124,13 @@ class nn_bc_classifier:
             "f1": f1,
             "accuracy": accuracy
         }
+    
+    def _process_batch(self, batch):
+        if self.args.alt == "true":
+            batch = {"states": torch.squeeze(batch[0]), "actions" : torch.squeeze(batch[1])}
+            if self.args.nn_type == "ffn":
+                batch["states"] = torch.flatten(batch["states"], start_dim = 1, end_dim = -1)
+        return batch
      
     def experiment(self, trainloader, valloader, testloader):
         val_metrics_log, test_metrics_log = self.train(trainloader, valloader, testloader)
