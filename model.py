@@ -31,9 +31,13 @@ class cnn_agent(nn.Module):
         self.conv1 = nn.Conv2d(4, 64, 3)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(64, 128, 3)
-        # self.conv3 = nn.Conv2d(128, 16, 3)
-        # self.conv4 = nn.Conv2d(16, 16, 3)
-        self.fc1 = nn.Linear(28224, 120) # 144 5776
+        # self.conv3 = nn.Conv2d(128, 256, 3)
+        # self.conv4 = nn.Conv2d(256, 256, 3)
+        # 1 layer: 107584
+        # 2 layers: 46208
+        # 3 layers: 16384
+        # 4 layers: 2304
+        self.fc1 = nn.Linear(46208, 120) # 144 5776
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, action_size)
 
@@ -41,7 +45,7 @@ class cnn_agent(nn.Module):
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         # x = self.pool(F.relu(self.conv3(x)))
-        # x = self.pool(F.relu(self.conv3(x)))
+        # x = self.pool(F.relu(self.conv4(x)))
         x = torch.flatten(x, 1) # flatten all dimensions except batch
         # print(x.shape)
         x = F.relu(self.fc1(x))

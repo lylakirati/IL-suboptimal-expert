@@ -1,5 +1,5 @@
 import numpy as np
-import pickle
+import random
 import torch
 from ncps.datasets.torch import AtariCloningDataset
 
@@ -56,13 +56,19 @@ def get_data_alt2(size, args):
     states = []
     actions = []
     train_ds = AtariCloningDataset("breakout", split="train")
-    for i in range(0, int(size)):
+    random_numbers = random.sample(range(0, 30000), int(args.data_size))
+    for i in random_numbers:
         cur_batch_states = train_ds.__getitem__(i)[0]
         cur_batch_actions = train_ds.__getitem__(i)[1]
+        if i == int(size/2):
+            print("half completed")
         for j in range(0, 32):
-            states.append((cur_batch_states.numpy()[j]).flatten())
+            if args.platform == "sklearn":
+                states.append((cur_batch_states.numpy()[j]).flatten())
+            elif args.platform == "nn":
+                states.append(cur_batch_states.numpy()[j])
             actions.append(cur_batch_actions.numpy()[j])
-    # print(np.array(actions))
+    # print(np.array(states).shape)
     # print(np.array(actions))
     return np.array(states), np.array(actions)
 #     val_ds = AtariCloningDataset("breakout", split="val")

@@ -9,18 +9,18 @@ from sklearn.ensemble import RandomForestClassifier
 parser = argparse.ArgumentParser()
 parser.add_argument("--platform", type=str, default="nn")
 parser.add_argument("--lr", type=float, default=1e-2)
-parser.add_argument("--bs", type=int, default=16)
+parser.add_argument("--bs", type=int, default=32)
 parser.add_argument("--n_layer", type=int, default=2)
 parser.add_argument("--state_size", type=int, default=None)
 parser.add_argument("--action_size", type=int, default=None)
-parser.add_argument("--data_size", type=int, default=1e2)
+parser.add_argument("--data_size", type=int, default=3e3)
 parser.add_argument("--train_size", type=float, default=0.7)
 parser.add_argument("--val_size", type=float, default=0.1)
 parser.add_argument("--test_size", type=float, default=0.2)
 parser.add_argument("--n_epochs", type=int, default=2)
 parser.add_argument("--nn_type", type=str, default="ffn")
 parser.add_argument("--test", type=str, default="false")
-parser.add_argument("--alt", type=str, default="false")
+parser.add_argument("--alt", type=str, default="false") #alt = true if use CNN to train the whole 960k dataset
 
 args = parser.parse_args()
 
@@ -39,16 +39,13 @@ if __name__ == "__main__":
         args.state_size = 6
         
     ## fetch data
-    if args.platform == "nn":
-        states, actions = fetch_expert_traj(size = args.data_size, args = args)
-    elif args.platform == "sklearn":
-        states, actions = get_data_alt2(size = args.data_size, args = args)
+    states, actions = get_data_alt2(size = args.data_size, args = args)
     
 
     print("got trajectories")
     trainstates = states[:int(args.data_size * args.train_size)]
     valstates = states[int(args.data_size * args.train_size):int(args.data_size * (args.train_size + args.val_size))]
-    teststates =  states[int(args.data_size * (args.train_size + args.val_size)):]
+    teststates = states[int(args.data_size * (args.train_size + args.val_size)):]
 
     trainactions = actions[:int(args.data_size * args.train_size)]
     valactions= actions[int(args.data_size * args.train_size):int(args.data_size * (args.train_size + args.val_size))]
@@ -60,8 +57,8 @@ if __name__ == "__main__":
 
     if args.platform == "sklearn":
         ## NOTE: spacify your model if using sklearn 
-        model = DecisionTreeClassifier(max_depth = 50)
-        model = RandomForestClassifier()
+        model = DecisionTreeClassifier(max_depth = 80)
+        # model = RandomForestClassifier(n_estimators=200, criterion="gini", max_depth=100)
     else:
         model = None
     result = run_experiment(args, traindata, testdata, valdata, model)
