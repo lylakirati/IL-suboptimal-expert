@@ -6,3 +6,4 @@ evaluate
 tqdm 
 argparse
 scikit-learn
+autorom

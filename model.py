@@ -8,6 +8,15 @@ from sklearn.metrics import f1_score, accuracy_score
 from ncps.datasets.torch import AtariCloningDataset
 import numpy as np
 
+import gym
+import ale_py
+from ale_py import ALEInterface
+from ale_py.roms import Breakout
+
+
+from ray.rllib.env.wrappers.atari_wrappers import wrap_deepmind
+
+
 class nn_agent(nn.Module):
     def __init__(self, n_layer, state_size, action_size):
         super().__init__()
@@ -178,6 +187,8 @@ def run_experiment(args, traindata, testdata, valdata = None, model = None):
 def run_experiment_sklearn(model, traindata, testdata):
     classifier = sklearn_classifier(model)
     result = classifier.experiment(traindata, testdata)
+    # Visualize game playing
+    cumulative_rewards = visualize_game(classifier.model)
     return result
 
 def run_experiment_nn(args, traindata = None, valdata = None, testdata = None):
@@ -217,6 +228,60 @@ def get_data_alt():
     return trainloader, valloader, testloader
 
 
+
+def run_closed_loop(model, env, num_episodes=None):
+    obs = env.reset()
+    # device = next(model.parameters()).device
+    # hx = None  # Hidden state of the RNN
+    returns = []
+    total_reward = 0
+    while True:
+        pred = model.predict(obs)
+        obs, r, done, _ = env.step(pred)
+        total_reward += r
+        if done:
+                obs = env.reset()
+                # hx = None  # Reset hidden state of the RNN
+                returns.append(total_reward)
+                total_reward = 0
+                if num_episodes is not None:
+                    # Count down the number of episodes
+                    num_episodes = num_episodes - 1
+                    if num_episodes == 0:
+                        return returns # returns cumulative rewards
+                    
+    # with torch.no_grad():
+    #     while True:
+
+    #         # PyTorch require channel first images -> transpose data
+    #         obs = np.transpose(obs, [2, 0, 1]).astype(np.float32) / 255.0
+    #         # add batch and time dimension (with a single element in each)
+    #         obs = torch.from_numpy(obs).unsqueeze(0).unsqueeze(0).to(device)
+    #         pred, hx = model(obs, hx)
+    #         # remove time and batch dimension -> then argmax
+    #         action = pred.squeeze(0).squeeze(0).argmax().item()
+    #         obs, r, done, _ = env.step(action)
+    #         total_reward += r
+    #         if done:
+    #             obs = env.reset()
+    #             hx = None  # Reset hidden state of the RNN
+    #             returns.append(total_reward)
+    #             total_reward = 0
+    #             if num_episodes is not None:
+    #                 # Count down the number of episodes
+    #                 num_episodes = num_episodes - 1
+    #                 if num_episodes == 0:
+    #                     return returns # returns cumulative rewards
+                    
+
+def visualize_game(model):
+    # Visualize Atari game and play endlessly
+    ale = ALEInterface()
+    ale.loadROM(Breakout)
+    env = gym.make("ALE/Breakout-v5", render_mode="human")
+    env = wrap_deepmind(env)
+    cumulative_rewards = run_closed_loop(model, env)
+    return cumulative_rewards
 
 
 
