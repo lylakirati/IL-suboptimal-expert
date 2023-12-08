@@ -5,3 +5,4 @@ torch
 evaluate
 tqdm 
 argparse
+scikit-learn
