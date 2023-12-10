@@ -300,7 +300,7 @@ def visualize_game(model):
     ale.loadROM(Breakout)
     print('ale_py:', ale_py.__version__)
     env = gym.make("ALE/Breakout-v5", render_mode="human")
-    # env = wrap_deepmind(env)
+    env = wrap_deepmind(env)
     cumulative_rewards = run_closed_loop(model, env)
     return cumulative_rewards
 
