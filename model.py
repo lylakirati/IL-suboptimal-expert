@@ -12,7 +12,7 @@ import gym
 import ale_py
 from ale_py import ALEInterface
 from ale_py.roms import Breakout
-
+import cv2
 
 from ray.rllib.env.wrappers.atari_wrappers import wrap_deepmind
 
@@ -186,6 +186,7 @@ def run_experiment(args, traindata, testdata, valdata = None, model = None):
 
 def run_experiment_sklearn(model, traindata, testdata):
     classifier = sklearn_classifier(model)
+    print(f"train state shape: {traindata['states'].shape}")
     result = classifier.experiment(traindata, testdata)
     # Visualize game playing
     cumulative_rewards = visualize_game(classifier.model)
@@ -228,19 +229,38 @@ def get_data_alt():
     return trainloader, valloader, testloader
 
 
+def preprocess(observation):
+    observation = cv2.cvtColor(cv2.resize(observation, (84, 110)), cv2.COLOR_BGR2GRAY)
+    observation = observation[26:110,:]
+    ret, observation = cv2.threshold(observation,1,255,cv2.THRESH_BINARY)
+    return np.reshape(observation,(84,84))
+
 
 def run_closed_loop(model, env, num_episodes=None):
-    obs = env.reset()
+    obs, _ = env.reset()
+    print(f"obs shape: {obs.shape}")
     # device = next(model.parameters()).device
     # hx = None  # Hidden state of the RNN
     returns = []
     total_reward = 0
+
+    preprocessed_obs = preprocess(obs)
+    last_four_frames = [preprocessed_obs, preprocessed_obs, preprocessed_obs, preprocessed_obs]
     while True:
-        pred = model.predict(obs)
-        obs, r, done, _ = env.step(pred)
+        model_input = np.array(last_four_frames).flatten().reshape((1, -1))
+        pred = model.predict(model_input)
+        obs, r, done, _ = env.step(pred[0])
+        # obs, reward, terminated, truncated, info
+
+        preprocessed_obs = preprocess(obs)
+        last_four_frames = last_four_frames[1:]
+        last_four_frames.append(preprocessed_obs)
+
+        print(f"observation: {obs}")
+        print(f"terminated: {done}")
         total_reward += r
         if done:
-                obs = env.reset()
+                obs, _ = env.reset()
                 # hx = None  # Reset hidden state of the RNN
                 returns.append(total_reward)
                 total_reward = 0
@@ -278,8 +298,9 @@ def visualize_game(model):
     # Visualize Atari game and play endlessly
     ale = ALEInterface()
     ale.loadROM(Breakout)
+    print('ale_py:', ale_py.__version__)
     env = gym.make("ALE/Breakout-v5", render_mode="human")
-    env = wrap_deepmind(env)
+    # env = wrap_deepmind(env)
     cumulative_rewards = run_closed_loop(model, env)
     return cumulative_rewards
 

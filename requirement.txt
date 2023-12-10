@@ -7,3 +7,4 @@ tqdm
 argparse
 scikit-learn
 autorom
+opencv
