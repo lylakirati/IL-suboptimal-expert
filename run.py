@@ -21,6 +21,9 @@ parser.add_argument("--n_epochs", type=int, default=1)
 parser.add_argument("--nn_type", type=str, default="cnn")
 parser.add_argument("--test", type=str, default="false")
 parser.add_argument("--alt", type=str, default="false")
+parser.add_argument("--suboptimal_type", type=str)
+parser.add_argument("--suboptimal_portion", type=float, default = 0.2)
+parser.add_argument("--downsample_action", type=int, default = 0)
 # alt = true if use CNN to train the whole 960k dataset
 parser.add_argument("--suboptimal", type=int, default=0)
 #
@@ -56,6 +59,9 @@ if __name__ == "__main__":
     traindata = {"states": trainstates, "actions": trainactions}
     valdata = {"states": valstates, "actions": valactions}
     testdata = {"states": teststates, "actions": testactions}
+
+    print(f"train state shape: {traindata['states'].shape}")
+    print(f"train action shape: {traindata['actions'].shape}")
 
     if args.platform == "sklearn":
         ## NOTE: spacify your model if using sklearn 

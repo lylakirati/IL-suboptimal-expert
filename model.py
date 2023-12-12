@@ -180,6 +180,41 @@ class sklearn_classifier:
         }
 
 def run_experiment(args, traindata, testdata, valdata = None, model = None):
+    if args.suboptimal_type == "alter_actions":
+        # Alter expert actions in train to be incorrect A\{a} for the speficied portion
+        print("Suboptimal type: alter incorrect expert actions")
+        print(f"Alter portion: {args.suboptimal_portion * 100: .1f}%")
+        train_size = traindata['actions'].shape[0]
+        alter_idx = np.random.choice(train_size, int(args.suboptimal_portion * train_size), replace = False)
+        action_set = np.array(range(4)) # array of all possible actions (0, 1, 2 , 3)
+        for i in alter_idx:
+            # select an action randomly from A\{a} where a is the true expert action
+            traindata['actions'][i] = np.random.choice(np.delete(action_set, traindata['actions'][i]))
+    elif args.suboptimal_type == "downsample":
+        # downsample expert action specified in downsample_action
+        print("Suboptimal type: downsample a certain action")
+        print(f"Downsampled action: {args.downsample_action}")
+        print(f"Alter portion (as a % of the size of the original action): {args.suboptimal_portion * 100: .1f}%")
+        action_size = (traindata['actions'] == args.downsample_action).sum()
+        alter_portion = int(args.suboptimal_portion * action_size)
+        certain_action_idx = np.where(traindata['actions'] == args.downsample_action)[0]
+        # sample observations to delete (downsample)
+        to_delete_idx = np.random.choice(certain_action_idx, alter_portion, replace = False)
+        # delete from train dataset
+        traindata['states'] = np.delete(traindata['states'], to_delete_idx, 0)
+        traindata['actions'] = np.delete(traindata['actions'], to_delete_idx)
+    elif args.suboptimal_type == "limit_size":
+        # randomly select observations for suboptimal_portion * traindata_size to delete
+        # this will shrink the expert data size by suboptimal_portion
+        print("Suboptimal type: limit expert data size")
+        print(f"Reduce expert size by: {args.suboptimal_portion * 100: .1f}%")
+        train_size = traindata['actions'].shape[0]
+        to_delete_idx = np.random.choice(train_size, int(args.suboptimal_portion * train_size), replace = False)
+        # delete from train dataset
+        traindata['states'] = np.delete(traindata['states'], to_delete_idx, 0)
+        traindata['actions'] = np.delete(traindata['actions'], to_delete_idx)
+
+
     if args.platform == "nn":
         return run_experiment_nn(args, traindata, valdata, testdata)
     if args.platform == "sklearn":
