@@ -10,11 +10,13 @@ import numpy as np
 
 import gym
 import ale_py
-from ale_py import ALEInterface
-from ale_py.roms import Breakout
-import cv2
-
 from ray.rllib.env.wrappers.atari_wrappers import wrap_deepmind
+from torch.utils.data import Dataset
+import torch.optim as optim
+
+
+from ncps.torch import CfC
+from ncps.datasets.torch import AtariCloningDataset
 
 
 class nn_agent(nn.Module):
@@ -159,7 +161,7 @@ class nn_bc_classifier:
     
 
 class sklearn_classifier:
-    def __init__(self, model, args = None):
+    def __init__(self, model, args):
         self.args = args
         self.model = model
     
@@ -181,15 +183,15 @@ def run_experiment(args, traindata, testdata, valdata = None, model = None):
     if args.platform == "nn":
         return run_experiment_nn(args, traindata, valdata, testdata)
     if args.platform == "sklearn":
-        return run_experiment_sklearn(model, traindata, testdata)
+        return run_experiment_sklearn(args, model, traindata, testdata)
 
 
-def run_experiment_sklearn(model, traindata, testdata):
-    classifier = sklearn_classifier(model)
+def run_experiment_sklearn(args, model, traindata, testdata):
+    classifier = sklearn_classifier(model, args)
     print(f"train state shape: {traindata['states'].shape}")
     result = classifier.experiment(traindata, testdata)
     # Visualize game playing
-    cumulative_rewards = visualize_game(classifier.model)
+    cumulative_rewards = visualize_game(args, classifier.model)
     return result
 
 def run_experiment_nn(args, traindata = None, valdata = None, testdata = None):
@@ -212,11 +214,14 @@ def run_experiment_nn(args, traindata = None, valdata = None, testdata = None):
     valloader = DataLoader(valdataset, batch_size = args.bs, shuffle = True)
     testloader = DataLoader(testdataset, batch_size = args.bs, shuffle = True)
     if args.alt == "true":
-        print("not my data")
         trainloader, valloader, testloader = get_data_alt()
 
     ## get results
     result = classifier.experiment(trainloader, valloader, testloader)
+
+    # Visualize game playing
+    cumulative_rewards = visualize_game(args, classifier.model)
+
     return result
 
 def get_data_alt():
@@ -229,38 +234,23 @@ def get_data_alt():
     return trainloader, valloader, testloader
 
 
-def preprocess(observation):
-    observation = cv2.cvtColor(cv2.resize(observation, (84, 110)), cv2.COLOR_BGR2GRAY)
-    observation = observation[26:110,:]
-    ret, observation = cv2.threshold(observation,1,255,cv2.THRESH_BINARY)
-    return np.reshape(observation,(84,84))
-
-
-def run_closed_loop(model, env, num_episodes=None):
-    obs, _ = env.reset()
+def run_closed_loop(args, model, env, num_episodes=10):
+    obs = env.reset()
     print(f"obs shape: {obs.shape}")
     # device = next(model.parameters()).device
-    # hx = None  # Hidden state of the RNN
     returns = []
     total_reward = 0
 
-    preprocessed_obs = preprocess(obs)
-    last_four_frames = [preprocessed_obs, preprocessed_obs, preprocessed_obs, preprocessed_obs]
-    while True:
-        model_input = np.array(last_four_frames).flatten().reshape((1, -1))
-        pred = model.predict(model_input)
-        obs, r, done, _ = env.step(pred[0])
-        # obs, reward, terminated, truncated, info
+    # sklearn
+    if args.platform == "sklearn":
+        while True:
+            obs = np.transpose(obs, [2, 0, 1]).astype(np.float32)
+            pred = model.predict(obs.reshape(1, -1))
 
-        preprocessed_obs = preprocess(obs)
-        last_four_frames = last_four_frames[1:]
-        last_four_frames.append(preprocessed_obs)
-
-        print(f"observation: {obs}")
-        print(f"terminated: {done}")
-        total_reward += r
-        if done:
-                obs, _ = env.reset()
+            obs, r, done, _ = env.step(pred[0])
+            total_reward += r
+            if done:
+                obs = env.reset()
                 # hx = None  # Reset hidden state of the RNN
                 returns.append(total_reward)
                 total_reward = 0
@@ -268,40 +258,41 @@ def run_closed_loop(model, env, num_episodes=None):
                     # Count down the number of episodes
                     num_episodes = num_episodes - 1
                     if num_episodes == 0:
+                        print(returns)
                         return returns # returns cumulative rewards
-                    
-    # with torch.no_grad():
-    #     while True:
 
-    #         # PyTorch require channel first images -> transpose data
-    #         obs = np.transpose(obs, [2, 0, 1]).astype(np.float32) / 255.0
-    #         # add batch and time dimension (with a single element in each)
-    #         obs = torch.from_numpy(obs).unsqueeze(0).unsqueeze(0).to(device)
-    #         pred, hx = model(obs, hx)
-    #         # remove time and batch dimension -> then argmax
-    #         action = pred.squeeze(0).squeeze(0).argmax().item()
-    #         obs, r, done, _ = env.step(action)
-    #         total_reward += r
-    #         if done:
-    #             obs = env.reset()
-    #             hx = None  # Reset hidden state of the RNN
-    #             returns.append(total_reward)
-    #             total_reward = 0
-    #             if num_episodes is not None:
-    #                 # Count down the number of episodes
-    #                 num_episodes = num_episodes - 1
-    #                 if num_episodes == 0:
-    #                     return returns # returns cumulative rewards
-                    
+    elif args.platform == "nn":
+        with torch.no_grad():
+            while True:
+                # PyTorch require channel first images -> transpose data
+                obs = np.transpose(obs, [2, 0, 1]).astype(np.float32)
+                # add batch and time dimension (with a single element in each)
+                obs = torch.from_numpy(obs).unsqueeze(0).to(args.device)
+                pred = model(obs)
+                action = torch.argmax(pred, dim = -1).item()
+                # remove time and batch dimension -> then argmax
+                # action = pred.argmax().item()
+                obs, r, done, _ = env.step(action)
+                total_reward += r
+                if done:
+                    obs = env.reset()
+                    hx = None  # Reset hidden state of the RNN
+                    returns.append(total_reward)
+                    total_reward = 0
+                    if num_episodes is not None:
+                        # Count down the number of episodes
+                        num_episodes = num_episodes - 1
+                        if num_episodes == 0:
+                            return returns # returns cumulative rewards
 
-def visualize_game(model):
-    # Visualize Atari game and play endlessly
-    ale = ALEInterface()
-    ale.loadROM(Breakout)
-    print('ale_py:', ale_py.__version__)
+
+def visualize_game(arg, model):
+    # # Visualize Atari game and play endlessly
+    # ale = ALEInterface()
+    # ale.loadROM(Breakout)
     env = gym.make("ALE/Breakout-v5", render_mode="human")
     env = wrap_deepmind(env)
-    cumulative_rewards = run_closed_loop(model, env)
+    cumulative_rewards = run_closed_loop(arg, model, env)
     return cumulative_rewards
 
 

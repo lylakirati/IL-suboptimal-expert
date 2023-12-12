@@ -68,8 +68,10 @@ def get_data_alt2(size, args):
             elif args.platform == "nn":
                 states.append(cur_batch_states.numpy()[j])
             actions.append(cur_batch_actions.numpy()[j])
-    # print(np.array(states).shape)
-    # print(np.array(actions))
+    if args.suboptimal == 1:
+        pass
+    elif args.suboptimal == 2:
+        pass
     return np.array(states), np.array(actions)
 #     val_ds = AtariCloningDataset("breakout", split="val")
 #     test_ds = AtariCloningDataset("breakout", split="val")
