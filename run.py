@@ -1,6 +1,6 @@
 from model import *
 from data import fetch_expert_traj
-from data import get_data_alt2
+from data import get_data_smallsize
 import argparse
 import torch 
 from sklearn.tree import DecisionTreeClassifier
@@ -12,8 +12,10 @@ parser.add_argument("--lr", type=float, default=1e-2)
 parser.add_argument("--bs", type=int, default=32)
 parser.add_argument("--n_layer", type=int, default=2)
 parser.add_argument("--state_size", type=int, default=28224)
-parser.add_argument("--action_size", type=int, default=18)
+parser.add_argument("--action_size", type=int, default=4)
 parser.add_argument("--data_size", type=int, default=3000)
+parser.add_argument("--max_depth", type=int, default=0)
+parser.add_argument("--n_estimators", type=int, default=0)
 parser.add_argument("--train_size", type=float, default=0.7)
 parser.add_argument("--val_size", type=float, default=0.1)
 parser.add_argument("--test_size", type=float, default=0.2)
@@ -22,8 +24,8 @@ parser.add_argument("--nn_type", type=str, default="cnn")
 parser.add_argument("--test", type=str, default="false")
 parser.add_argument("--alt", type=str, default="false")
 parser.add_argument("--suboptimal_type", type=str)
-parser.add_argument("--suboptimal_portion", type=float, default = 0.2)
-parser.add_argument("--downsample_action", type=int, default = 0)
+parser.add_argument("--suboptimal_portion", type=float, default=0.1)
+parser.add_argument("--downsample_action", type=int, default=0)
 # alt = true if use CNN to train the whole 960k dataset
 parser.add_argument("--suboptimal", type=int, default=0)
 #
@@ -46,7 +48,7 @@ if __name__ == "__main__":
         
     ## fetch data
 
-    states, actions = get_data_alt2(size = args.data_size, args = args)
+    states, actions = get_data_smallsize(size = args.data_size, args = args)
     print("got trajectories")
     trainstates = states[:int(args.data_size * args.train_size)]
     valstates = states[int(args.data_size * args.train_size):int(args.data_size * (args.train_size + args.val_size))]
@@ -65,8 +67,8 @@ if __name__ == "__main__":
 
     if args.platform == "sklearn":
         ## NOTE: spacify your model if using sklearn 
-        model = DecisionTreeClassifier(max_depth = 80)
-        # model = RandomForestClassifier(n_estimators=200, criterion="gini", max_depth=100)
+        model = DecisionTreeClassifier(max_depth=args.max_depth)
+        # model = RandomForestClassifier(n_estimators=args.n_estimators, criterion="gini", max_depth=args.max_depth)
     else:
         model = None
     result = run_experiment(args, traindata, testdata, valdata, model)

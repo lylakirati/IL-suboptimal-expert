@@ -52,7 +52,7 @@ def get_test_dataset(size):
 # states, actions = get_expert_traj()
 # print(states.shape)
 
-def get_data_alt2(size, args):
+def get_data_smallsize(size, args):
     states = []
     actions = []
     train_ds = AtariCloningDataset("breakout", split="train")
@@ -60,18 +60,12 @@ def get_data_alt2(size, args):
     for i in random_numbers:
         cur_batch_states = train_ds.__getitem__(i)[0]
         cur_batch_actions = train_ds.__getitem__(i)[1]
-        if i == int(size/2):
-            print("half completed")
         for j in range(0, 32):
             if args.platform == "sklearn":
                 states.append((cur_batch_states.numpy()[j]).flatten())
             elif args.platform == "nn":
                 states.append(cur_batch_states.numpy()[j])
             actions.append(cur_batch_actions.numpy()[j])
-    if args.suboptimal == 1:
-        pass
-    elif args.suboptimal == 2:
-        pass
     return np.array(states), np.array(actions)
 #     val_ds = AtariCloningDataset("breakout", split="val")
 #     test_ds = AtariCloningDataset("breakout", split="val")
